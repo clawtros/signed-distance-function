@@ -1,79 +1,71 @@
-// Define some constants
+precision mediump float;
+uniform float time;
+
 const int steps = 128; // This is the maximum amount a ray can march.
-const float smallNumber = 0.001;
-const float maxDist = 10.; // This is the maximum distance a ray can travel.
- 
-float scene(vec3 position){
-    // So this is different from the sphere equation above in that I am
-    // splitting the position into its three different positions
-    // and adding a 10th of a cos wave to the x position so it oscillates left 
-    // to right and a (positive) sin wave to the z position
-    // so it will go back and forth.
-    float sphere = length(
-        vec3(
-            position.x + cos(time)/10., 
+const float smallNumber = 0.0000000001;
+const float maxDist = 200.; // This is the maximum distance a ray can travel.
+varying vec2 uv;
+
+float sdOctahedron( vec3 p, float s)
+{
+  p = abs(p);
+  return (p.x+p.y+p.z-s)*0.57735027;
+}
+
+vec4 scene(vec3 position){
+   vec3 p = vec3(
+            position.x + cos(time * position.z * 0.1), 
             position.y, 
-            position.z + (sin(time)+2.))
-        )-0.5;
-    
-    // This is different from the ground equation because the UV is only 
-    // between -1 and 1 we want more than 1/2pi of a wave per length of the 
-    // screen so we multiply the position by a factor of 10 inside the trig 
-    // functions. Since sin and cos oscillate between -1 and 1, that would be 
-    // the entire height of the screen so we divide by a factor of 10.
-    float ground = position.y + sin(position.x * 10.) / 10. 
-                              + cos(position.z * 10.) / 10. + 1.;
-    
-    // We want to return whichever one is closest to the ray, so we return the 
-    // minimum distance.
-    return min(sphere,ground);
+            position.z + (sin(time) * 10. + 10.));
+    float sphere = sdOctahedron( p + vec3(sin(p.x *.5), sin(p.y * .5), sin(p.z *.5))
+        , .9 );
+    float ground = position.y * position.y * -1.
+                   + sin(position.x / position.y + position.x + time * .6) / 2.
+                   + cos(position.z * 10.) / 10. + 1.;
+    if (sphere > ground) {
+      if (position.y > 0.5) {
+        return vec4(ground, vec3(1., 1., 1.));
+      } else {
+        return vec4(ground, vec3(1., 0.8, 0.4));
+      }
+        
+    } else {
+        return vec4(sphere, 4., 0.2, 0.);
+    }
 }
  
-vec4 trace (vec3 origin, vec3 direction){
-    
+vec4 trace (vec3 origin, vec3 direction){    
     float dist = 0.;
     float totalDistance = 0.;
     vec3 positionOnRay = origin;
-    
+    vec4 scn;
     for(int i = 0 ; i < steps; i++){
-        
-        dist = scene(positionOnRay);
-        
-        // Advance along the ray trajectory the amount that we know the ray
-        // can travel without going through an object.
-        positionOnRay += dist * direction;
-        
-        // Total distance is keeping track of how much the ray has traveled
-        // thus far.
+        scn = scene(positionOnRay);
+        dist = scn.x;
+        positionOnRay += dist * direction;        
         totalDistance += dist;
         
-        // If we hit an object or are close enough to an object,
         if (dist < smallNumber){
-            // return the distance the ray had to travel normalized so be white
-            // at the front and black in the back.
-            return 1. - (vec4(totalDistance) / maxDist);
- 
+            return vec4((1. - (totalDistance / maxDist)) * scn.gba, .9);
         }
         
         if (totalDistance > maxDist){
- 
-            return vec4(0.); // Background color.
+            return vec4(vec3(origin.y), 1.); // Background color.
         }
-    }
-    
-    return vec4(0.);// Background color.
+    }    
+    return vec4(.0, 0., .3, 1.);// Background color.
 }
+
 void main() {
     
-    vec2 pos = uv();
+    vec2 pos = uv;
 
-    vec3 camOrigin = vec3(0,0,-1);
+    vec3 camOrigin = vec3(0,0, -1.);
 	vec3 rayOrigin = vec3(pos + camOrigin.xy, camOrigin.z + 1.);
 	vec3 dir = camOrigin + rayOrigin;
 
     vec4 color = vec4(trace(rayOrigin,dir));
     
     gl_FragColor = color;
-    
-    
+       
 }

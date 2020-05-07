@@ -5,30 +5,7 @@ const draw = regl({
 
     // Shaders in regl are just strings.  You can use glslify or whatever you want
     // to define them.  No need to manually create shader objects.
-    frag: `
-      precision mediump float;
-
-      varying vec2 uv;
-      uniform float time;
-
-      void main() {
-
-        vec2 pos = uv; // origin is in center
-    
-        float r = sin(time + pos.x); 
-        // x is left to right, why we see red moving from right to left think about us as a camera moving around
-        // sin returns a number from -1 to 1, and colors are from 0 to 1, so it clips to no red half the time
-        
-        float g = sin(-time + pos.y * 20.); // higher frequency green stripes
-        
-        float b = mod(pos.x / pos.y,1.0);
-        // when x is eual to y the colors will be brighter, mod repeats the space
-        // mod is like a sawtooth function
-        
-        vec4 color = vec4(r,g,b,1);
-        
-        gl_FragColor = color;      
-    }`,
+    frag: require("./scene.frag").default,
   
       vert: `
       precision mediump float;
@@ -50,7 +27,7 @@ const draw = regl({
       // regl automatically infers sane defaults for the vertex attribute pointers
     },
   
-    uniforms: {time: 0},
+    uniforms: {time: regl.prop('time')},
     // This tells regl the number of vertices to draw in this command
     count: 4,
     primitive: "triangle fan"
@@ -63,7 +40,5 @@ const draw = regl({
       color: [0, 0, 0, 0],
       depth: 1
     })
-  
-    // draw a triangle using the command defined above
-    draw({ time: new Date()})
+    draw({ time: time })
   })
